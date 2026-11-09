@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from skillspector.providers import registry
+from skillspector.providers.base import RegistryLookupMixin
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
@@ -36,7 +37,7 @@ BUILD_BASE_URL = "https://integrate.api.nvidia.com/v1"
 REGISTRY_PATH = str(Path(__file__).with_name("model_registry.yaml"))
 
 
-class NvBuildProvider:
+class NvBuildProvider(RegistryLookupMixin):
     """build.nvidia.com credentials + bundled-YAML metadata provider."""
 
     # GLM-5.2 is retired on the hosted endpoint (HTTP 410).
@@ -46,6 +47,7 @@ class NvBuildProvider:
     # because its hosted requests timed out. Recheck both before replacing it.
     DEFAULT_MODEL = "z-ai/glm-5.3"
     SLOT_DEFAULTS: dict[str, str] = {}
+    REGISTRY_PATH = REGISTRY_PATH
 
     def resolve_credentials(self) -> tuple[str, str | None] | None:
         """Return ``(api_key, base_url)`` from ``NVIDIA_INFERENCE_KEY``."""
@@ -74,15 +76,5 @@ class NvBuildProvider:
             default_reasoning_effort="high" if model == "z-ai/glm-5.3" else None,
         )
 
-    def get_context_length(self, model: str) -> int | None:
-        """Look up *model*'s context window in the bundled ``model_registry.yaml``."""
-        return registry.lookup_context_length(REGISTRY_PATH, model)
 
-    def get_max_output_tokens(self, model: str) -> int | None:
-        """Look up *model*'s max-output cap in the bundled ``model_registry.yaml``."""
-        return registry.lookup_max_output_tokens(REGISTRY_PATH, model)
 
-    def resolve_model(self, slot: str = "default") -> str:
-        """Resolve model: ``SKILLSPECTOR_MODEL`` env > slot default > ``DEFAULT_MODEL``."""
-        user_input = os.environ.get("SKILLSPECTOR_MODEL", "").strip()
-        return user_input or self.SLOT_DEFAULTS.get(slot, "") or self.DEFAULT_MODEL

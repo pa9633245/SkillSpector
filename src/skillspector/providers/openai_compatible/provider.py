@@ -43,6 +43,7 @@ from pathlib import Path
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from skillspector.providers import registry
+from skillspector.providers.base import RegistryLookupMixin
 from skillspector.providers.chat_models import create_openai_compatible_chat_model
 from skillspector.providers.structured_output import forced_tool_choice_supported
 
@@ -68,11 +69,12 @@ def _resolve_compat_headers() -> dict[str, str] | None:
     return headers
 
 
-class OpenAICompatibleProvider:
+class OpenAICompatibleProvider(RegistryLookupMixin):
     """Generic OpenAI-compatible credentials + bundled-YAML metadata provider."""
 
     DEFAULT_MODEL = "llama-3.1-70b-versatile"
     SLOT_DEFAULTS: dict[str, str] = {}
+    REGISTRY_PATH = REGISTRY_PATH
 
     def resolve_credentials(self) -> tuple[str, str | None] | None:
         """Return ``(api_key, base_url)`` from ``SKILLSPECTOR_COMPAT_*`` env vars."""
@@ -99,16 +101,8 @@ class OpenAICompatibleProvider:
             forced_tool_choice=self.forced_tool_choice_supported(model),
         )
 
-    def get_context_length(self, model: str) -> int | None:
-        return registry.lookup_context_length(REGISTRY_PATH, model)
 
-    def get_max_output_tokens(self, model: str) -> int | None:
-        return registry.lookup_max_output_tokens(REGISTRY_PATH, model)
 
-    def resolve_model(self, slot: str = "default") -> str:
-        """Resolve model: ``SKILLSPECTOR_MODEL`` env > slot default > ``DEFAULT_MODEL``."""
-        user_input = os.environ.get("SKILLSPECTOR_MODEL", "").strip()
-        return user_input or self.SLOT_DEFAULTS.get(slot, "") or self.DEFAULT_MODEL
 
     def forced_tool_choice_supported(self, model: str) -> bool:
         """``False`` when the registry declares ``tool_choice: auto`` for *model*.

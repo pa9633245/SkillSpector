@@ -29,6 +29,7 @@ without an explicit ``runtime_checkable`` decorator).
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, ClassVar, Protocol
 
 if TYPE_CHECKING:
@@ -126,3 +127,28 @@ def has_cli_capability(provider: object) -> bool:
     return callable(getattr(provider, "is_available", None)) and callable(
         getattr(provider, "complete", None)
     )
+
+class RegistryLookupMixin:
+    """Shared registry-backed metadata lookups for providers.
+
+    Subclasses must set ``REGISTRY_PATH``, ``DEFAULT_MODEL``, and
+    ``SLOT_DEFAULTS``.  Override individual methods when
+    provider-specific logic is needed (e.g. gemini prefix stripping).
+    """
+
+    REGISTRY_PATH: ClassVar[str]
+    DEFAULT_MODEL: ClassVar[str]
+    SLOT_DEFAULTS: ClassVar[dict[str, str]]
+
+    def get_context_length(self, model: str) -> int | None:
+        from skillspector.providers import registry
+        return registry.lookup_context_length(self.REGISTRY_PATH, model)
+
+    def get_max_output_tokens(self, model: str) -> int | None:
+        from skillspector.providers import registry
+        return registry.lookup_max_output_tokens(self.REGISTRY_PATH, model)
+
+    def resolve_model(self, slot: str = "default") -> str:
+        """Resolve model: SKILLSPECTOR_MODEL env > slot default > DEFAULT_MODEL."""
+        user_input = os.environ.get("SKILLSPECTOR_MODEL", "").strip()
+        return user_input or self.SLOT_DEFAULTS.get(slot, "") or self.DEFAULT_MODEL

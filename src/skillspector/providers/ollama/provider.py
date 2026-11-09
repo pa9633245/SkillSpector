@@ -29,7 +29,7 @@ from pathlib import Path
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from skillspector.providers import registry
+from skillspector.providers.base import RegistryLookupMixin
 from skillspector.providers.chat_models import create_openai_compatible_chat_model
 
 OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434/v1"
@@ -37,11 +37,12 @@ OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434/v1"
 REGISTRY_PATH = str(Path(__file__).with_name("model_registry.yaml"))
 
 
-class OllamaProvider:
+class OllamaProvider(RegistryLookupMixin):
     """Ollama credentials + bundled-YAML metadata provider."""
 
     DEFAULT_MODEL = "llama3.1:8b"
     SLOT_DEFAULTS: dict[str, str] = {}
+    REGISTRY_PATH = REGISTRY_PATH
 
     def resolve_credentials(self) -> tuple[str, str | None] | None:
         """Return ``(api_key, base_url)`` for the Ollama endpoint.
@@ -68,13 +69,3 @@ class OllamaProvider:
             timeout=timeout,
         )
 
-    def get_context_length(self, model: str) -> int | None:
-        return registry.lookup_context_length(REGISTRY_PATH, model)
-
-    def get_max_output_tokens(self, model: str) -> int | None:
-        return registry.lookup_max_output_tokens(REGISTRY_PATH, model)
-
-    def resolve_model(self, slot: str = "default") -> str:
-        """Resolve model: ``SKILLSPECTOR_MODEL`` env > slot default > ``DEFAULT_MODEL``."""
-        user_input = os.environ.get("SKILLSPECTOR_MODEL", "").strip()
-        return user_input or self.SLOT_DEFAULTS.get(slot, "") or self.DEFAULT_MODEL

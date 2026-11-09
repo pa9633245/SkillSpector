@@ -124,3 +124,4 @@ markers = [
     "provider: live OpenAI/Anthropic/NVIDIA Build provider endpoint tests",
 ]
 addopts = "-m 'not integration and not provider'"
+asyncio_default_fixture_loop_scope = "function"
