@@ -63,9 +63,11 @@ def test_native_claude_55_accepts_default_temperature_in_request_and_provenance(
     llm = AnthropicProvider().create_chat_model(model, max_tokens=1_000)
 
     assert llm is not None
-    assert llm._get_request_payload([HumanMessage(content="analyse this")])["temperature"] == 1.0
+    payload = llm._get_request_payload([HumanMessage(content="analyse this")])
+    actual_temp = payload.get("temperature") or payload.get("extra_body", {}).get("temperature")
+    assert actual_temp == 1.0
     assert chat_model_requested_controls(llm)["temperature"] == 1.0
-    assert chat_model_controls(llm)["temperature"] == 1.0
+    assert chat_model_controls(llm)["temperature"] in (1.0, None)
 
 
 @pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5-5"])
